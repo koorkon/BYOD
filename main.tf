@@ -8,15 +8,16 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1" 
+  region = var.aws_region
 }
 
-# A simple resource to test the pipeline
-resource "aws_instance" "example" {
-  ami           = "ami-0c55b159cbfafe1f0" # Standard Amazon Linux 2 AMI
+resource "aws_instance" "dev_ec2" {
+  ami           = var.ami_id
   instance_type = var.instance_type
+  key_name      = var.key_name
 
   tags = {
-    Name = "Jenkins-Lab-Instance"
+    Name = var.instance_name
+    Env  = var.environment
   }
 }
