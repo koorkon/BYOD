@@ -19,11 +19,16 @@ pipeline {
             }
         }
 
-        stage('Terraform Initialization') {
-            steps {
-                sh 'terraform init'
-            }
+        stage('Terraform Init & Verify') {
+    steps {
+        sh 'ls -la' 
+        sh 'terraform init'
+        script {
+            echo "Verifying dev.tfvars..."
+            sh "[ -f dev.tfvars ] && cat dev.tfvars || echo 'FILE NOT FOUND'"
         }
+    }
+}
 
         stage('Variable Verification') {
             steps {
@@ -60,10 +65,27 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-            steps {
-                sh "terraform apply -auto-approve tfplan"
+    steps {
+        dir('terraform') {
+            sh '''
+              terraform init
+              terraform apply -auto-approve -var-file=dev.tfvars
+            '''
+            script {
+                env.INSTANCE_IP = sh(
+                    script: "terraform output -raw instance_public_ip",
+                    returnStdout: true
+                ).trim()
+
+                env.INSTANCE_ID = sh(
+                    script: "terraform output -raw instance_id",
+                    returnStdout: true
+                ).trim()
             }
         }
+    }
+}
+
     }
 
     post {
