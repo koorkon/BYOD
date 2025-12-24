@@ -11,7 +11,6 @@ terraform.rc
 
 # Variable Files (Likely to contain sensitive data/secrets)
 # Never commit files that hold secrets like database passwords or API keys.
-*.tfvars
 *.tfvars.json
 
 # Crash logs and saved plans
