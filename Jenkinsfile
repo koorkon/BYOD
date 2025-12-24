@@ -4,33 +4,13 @@ pipeline {
     environment {
         TF_IN_AUTOMATION = 'true'
         TF_CLI_ARGS = '-no-color'
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        SSH_CRED_ID           = 'my-ssh-key-id' 
     }
 
     stages {
-        stage('Load Credentials') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
-                    sshUserPrivateKey(credentialsId: 'SSH_CRED_ID', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    echo "AWS and SSH credentials loaded securely."
-                }
-            }
-        }
-
         stage('Terraform Init & Verify') {
-    steps {
-        sh 'ls -la' 
-        sh 'terraform init'
-        script {
-            echo "Verifying dev.tfvars..."
-            sh "[ -f dev.tfvars ] && cat dev.tfvars || echo 'FILE NOT FOUND'"
-        }
-    }
-}
-
-        stage('Variable Verification') {
             steps {
                 script {
                     def varFile = "${env.BRANCH_NAME}.tfvars"
