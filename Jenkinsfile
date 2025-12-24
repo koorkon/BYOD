@@ -12,38 +12,66 @@ pipeline {
     stages {
         stage('Terraform Init & Verify') {
             steps {
-                sh 'terraform init'
                 script {
-                    echo "Verifying dev.tfvars content..."
-                    sh "cat dev.tfvars"
+                    def varFile = "${env.BRANCH_NAME}.tfvars"
+                    sh """
+                        if [ -f ${varFile} ]; then
+                            echo 'Variables in ${varFile}:'
+                            cat ${varFile}
+                        else
+                            echo 'Variable file ${varFile} not found!'
+                        fi
+                    """
                 }
             }
         }
 
         stage('Terraform Plan') {
-            steps {
-                script {
-                    echo "Generating execution plan using dev.tfvars..."
-                    sh "terraform plan -var-file=dev.tfvars -out=tfplan"
-                }
-            }
-        }
+    steps {
+        script {
+            def branchName = env.GIT_BRANCH ? env.GIT_BRANCH.replace('origin/', '') : 'dev'
+            
+            echo "Generating execution plan for branch: ${branchName}"
 
-        stage('Validate Apply') {
+            sh "terraform plan -var-file=${branchName}.tfvars -out=tfplan"
+        }
+    }
+}
+
+        stage('Manual Approval') {
             steps {
-                input message: "Review the plan in the console. Do you want to proceed with the Apply?", 
-                      ok: "Confirm Deployment"
+                input message: "Approve Terraform Apply for branch ${env.BRANCH_NAME}?", ok: "Apply"
             }
         }
 
         stage('Terraform Apply') {
-            steps {
-                sh "terraform apply -auto-approve tfplan"
+    steps {
+        dir('terraform') {
+            sh '''
+              terraform init
+              terraform apply -auto-approve -var-file=dev.tfvars
+            '''
+            script {
+                env.INSTANCE_IP = sh(
+                    script: "terraform output -raw instance_public_ip",
+                    returnStdout: true
+                ).trim()
+
+                env.INSTANCE_ID = sh(
+                    script: "terraform output -raw instance_id",
+                    returnStdout: true
+                ).trim()
             }
         }
     }
-    
+}
+
+    }
+
     post {
+        success {
+            echo "Terraform deployment completed successfully."
+        }
         failure {
             echo "Terraform deployment failed. Please check the logs."
         }
